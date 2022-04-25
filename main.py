@@ -1,15 +1,24 @@
 import pyautogui
 import pytesseract
-import cv2
 from time import sleep
-import numpy as np
 from typing import NamedTuple
 import itertools
 from pytesseract import Output
 import yaml
+from util import screenshot_cv, read_adjusted_layout
+import argparse
+
+# Some layout constants
+ITEM_RANKS = [x.strip() for x in open("res/layout/dropdowns/category.txt", "r").readlines()]
+ITEM_TIERS = [x.strip() for x in open("res/layout/dropdowns/item-tier.txt", "r").readlines()]
+ITEM_CATEGORIES = [x.strip() for x in open("res/layout/dropdowns/category.txt", "r").readlines()]
+ITEM_COMBAT_STATS = [x.strip() for x in open("res/layout/dropdowns/combat-stats.txt", "r").readlines()]
+ITEM_ENGRAVINGS = [x.strip() for x in open("res/layout/dropdowns/engravings.txt", "r").readlines()]
+OTHER_ADVANCED_OPTIONS = [x.strip() for x in open("res/layout/dropdowns/other-advanced-options.txt", "r").readlines()]
+
 
 class Item(NamedTuple):
-    type: str  # [Necklace, Ring, Earrings, Stone] supported for now
+    type: str
     name: str
     tier: str
     rank: str
@@ -17,45 +26,27 @@ class Item(NamedTuple):
     engravings: dict
 
 
-class Config:
-    TESSERACT_BIN = "C:\Program Files\Tesseract-OCR\\tesseract.exe"
-    LAYOUT_CONFIG_PATH = "layout_config.yaml"
-    SCROLL_SPEED = 0.001
-    SCROLL_STEPS = 1
-    SLEEP_AFTER_HOVER = 0.2
-    MOVE_TO_SPEED = 0.1
+def extract_item_ocr_lst(position):
+    # Move mouse over item
+    pyautogui.moveTo(*position, args.move_to_speed)
+    sleep(args.sleep_after_hover)
+
+    # Take a screenshot
+    screenshot = screenshot_cv()
+
+    # Take screenshot, cut and OCR
+    screenshot = screenshot_cv()
+    start_y = cell_pos[0] + window_offset
+    end_y = start_y + window_width
+    screenshot = screenshot[:, start_y:end_y, :]
+
+    # OCR
+    item_ocr = pytesseract.image_to_data(screenshot, output_type=Output.DICT)
+    item_ocr_lst = item_ocr["text"]
+    return item_ocr_lst
 
 
-ITEM_RANKS = ["Overall", "Normal", "Uncommon", "Rare", "Epic", "Legendary", "Relic"]
-ITEM_TIERS = ["All", "Tier 1", "Tier 2", "Tier 3"]
-ITEM_CATEGORIES = [x.strip() for x in open("assets/category-menu-list.txt", "r").readlines()]
-ITEM_COMBAT_STATS = [x.strip() for x in open("assets/combat-stats-menu-list.txt", "r").readlines()]
-ITEM_ENGRAVINGS = [x.strip() for x in open("assets/engraving-menu-list.txt", "r").readlines()]
-ACCESSORY_CATEGORIES = ["Necklace", "Earrings", "Ring"]
-OTHER_ADVANCED_OPTIONS = ["All", "Combat Stats", "Engraving Effect"]
-
-
-def click_event(event, x, y, flags, params):
-    global click_event_return
-    if event == cv2.EVENT_LBUTTONDOWN:
-        click_event_return.append(np.array([x, y]))
-
-
-def screenshot_cv():
-    img = pyautogui.screenshot()
-    cv_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-    return cv_img
-
-
-def click_on_screenshot(img, alert_msg=""):
-    cv2.imshow('Screenshot', img)
-    cv2.setMouseCallback('Screenshot', click_event)
-    pyautogui.alert(alert_msg)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-def parse_item_window(item_ocr_lst):
+def parse_item_ocr_lst(item_ocr_lst):
     if "Inventory" in item_ocr_lst:
         del (item_ocr_lst[item_ocr_lst.index("Inventory")])
 
@@ -171,59 +162,41 @@ def pick_from_dropdown(dropdown_position, entry_to_choose, dropdown_entry_lst, d
 
     # Perform the movements and clicks
     # 1) Move to dropdown rectangle and open
-    pyautogui.moveTo(*dropdown_position, Config.MOVE_TO_SPEED)
+    pyautogui.moveTo(*dropdown_position, args)
     pyautogui.click()
 
     # 2) Move to first element inside dropdown menu
     first_position = [
         dropdown_position[0],
         dropdown_position[1] + dropdown_offset]
-    pyautogui.moveTo(*first_position, Config.MOVE_TO_SPEED)
+    pyautogui.moveTo(*first_position, args.move_to_speed)
 
     # 3) Do the required number of scrolls
-    for _ in range(num_scrolls // Config.SCROLL_STEPS):
-        pyautogui.scroll(-Config.SCROLL_STEPS)
-        sleep(Config.SCROLL_SPEED)
-    num_scrolls_mod = num_scrolls % Config.SCROLL_STEPS
-    if num_scrolls_mod != 0:
-        pyautogui.scroll(-num_scrolls_mod)
+    for _ in range(num_scrolls):
+        pyautogui.scroll(-1)
+        sleep(args.scroll_speed)
 
     # 4) Move to the entry inside dropdown we want to choose and click
     target_position = [
         first_position[0],
         first_position[1] + dropdown_step * entry_steps]
-    pyautogui.moveTo(*target_position, Config.MOVE_TO_SPEED)
+    pyautogui.moveTo(*target_position, args.move_to_speed)
     pyautogui.click()
 
 
-def extract_item_ocr_lst(position):
-    # Move mouse over item
-    pyautogui.moveTo(*position, Config.MOVE_TO_SPEED)
-    sleep(Config.SLEEP_AFTER_HOVER)
-
-    # Take a screenshot
-    screenshot = screenshot_cv()
-
-    # Take screenshot, cut and OCR
-    screenshot = screenshot_cv()
-    start_y = cell_pos[0] + window_offset
-    end_y = start_y + window_width
-    screenshot = screenshot[:, start_y:end_y, :]
-
-    # OCR
-    item_ocr = pytesseract.image_to_data(screenshot, output_type=Output.DICT)
-    item_ocr_lst = item_ocr["text"]
-    return item_ocr_lst
-
-
 if __name__ == "__main__":
-    click_event_return = []
-    layout_config = None
-    dropdown_offset = None
-    dropdown_step = None
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--tesseract-bin-path', type=str, default="C:\Program Files\Tesseract-OCR\tesseract.exe")
+    parser.add_argument('--layout-config-path', type=str, default="res\layout\layout-info.yaml")
+    parser.add_argument('--scroll-speed', type=float, default=0.01)
+    parser.add_argument('--sleep-after-hover', type=float, default=0.2)
+    parser.add_argument('--move-to-speed', type=float, default=0.1)
+    parser.add_argument('--manually-advanced', action='store_true')
+    parser.add_argument('--scan-inventory', action='store_true')
+    args = parser.parse_args()
 
     # Set Tesseract path
-    pytesseract.pytesseract.tesseract_cmd = Config.TESSERACT_BIN
+    pytesseract.pytesseract.tesseract_cmd = args.tesseract_bin_path
 
     # Let's start
     pyautogui.alert("Bring Lost Ark to foreground. Press [OK] button afterwards.")
@@ -231,22 +204,14 @@ if __name__ == "__main__":
 
     # Get game resolution
     screen_width, screen_height = pyautogui.size()
-    print(f"Detected {screen_width}x{screen_height} resolution...")
+    res_str = f"{screen_width}x{screen_height}"
+    print(f"Detecting {screen_width}x{screen_height} screen resolution...")
 
-    # Load Config
-    print(f"Loading layout configuration from {Config.LAYOUT_CONFIG_PATH}...")
-    with open(Config.LAYOUT_CONFIG_PATH, "r") as f:
-        try:
-            layout_config = yaml.safe_load(f)
-        except yaml.YAMLError as exc:
-            print(exc)
-    if f"{screen_width}x{screen_height}" in layout_config.keys():
-        print("Success!")
-        layout_config = layout_config[f"{screen_width}x{screen_height}"]
-    else:
-        raise Exception("Could not find valid configuration for your game resolution...")
-    dropdown_offset = layout_config["advanced-search-window"]["dropdown"]["offset"]
-    dropdown_step = layout_config["advanced-search-window"]["dropdown"]["step"]
+    # Load layout description, automatically adjust to current game resolution
+    print(f"Loading layout description from {args.layout_config_path}...")
+    layout = read_adjusted_layout(res_str, args.layout_config_path)
+    dropdown_offset = layout["advanced-search-window"]["dropdown"]["offset"]
+    dropdown_step = layout["advanced-search-window"]["dropdown"]["step"]
 
     pyautogui.alert("Open your inventory and move it to the top-left corner.\n"
                     "Open the Market window.\n"
@@ -254,146 +219,213 @@ if __name__ == "__main__":
     sleep(0.5)
 
     # Input inventory range to check
-    range_str = pyautogui.prompt("Input 'start_row, start_col, end_row, end_col'. Each entry has to lie in [0, 9].")
+    range_str = pyautogui.prompt("Input 'end_row end_col'. Starts at (0, 0), row-first, column-last. Indexing from "
+                                 "[0, 9]. End indices are inclusive.")
     range_str = [int(x) for x in range_str.split(" ")]
     start_row, start_col, end_row, end_col = range_str
-    print(f"Going from ({start_row}, {start_col}) up to ({end_row}, {end_col})...")
+    print(f"Going from ({start_row}, {start_col}) to ({end_row}, {end_col})...")
 
     # Extract items via mouse hover -> Screenshot and cut -> OCR -> Item NamedTuple
     items = []
-    base_cell_pos = layout_config['inventory-window']['cell00-center']
-    window_offset = layout_config['item-window']['offset-from-cell-center']
-    window_width = layout_config['item-window']['width']
+    rows_cols = []
+    base_cell_pos = layout['inventory-window']['upper-left-cell']
+    window_offset = layout['item-window']['offset-from-cell-center']
+    window_width = layout['item-window']['width']
     for row in range(start_row, end_row + 1):
         for col in range(
                 start_col if row == start_row else 0,
                 end_col + 1 if row == end_row else 10):
+            rows_cols.append((row, col))
+
+            if not args.scan_inventory:
+                continue
+
             # Hover over item
             cell_pos = [
-                base_cell_pos[0] + col * layout_config['inventory-window']['cell-size'],
-                base_cell_pos[1] + row * layout_config['inventory-window']['cell-size']
+                base_cell_pos[0] + col * layout['inventory-window']['cell-size'],
+                base_cell_pos[1] + row * layout['inventory-window']['cell-size']
             ]
-
             # Screenshot and OCR
             item_ocr_lst = extract_item_ocr_lst(cell_pos)
 
             # OCR to item NamedTuple
-            item = parse_item_window(item_ocr_lst)
+            item = parse_item_ocr_lst(item_ocr_lst)
             if item is None:
                 print(f"Oh oh! Could not parse ({row}, {col})!")
                 continue
 
             items.append(item)
 
-    for item in items:
-        # Open Auction House tab
-        pyautogui.moveTo(*layout_config["market-window"]["auction-house-button"], Config.MOVE_TO_SPEED)
-        pyautogui.click()
+    if args.scan_inventory:
+        print("===================== Detected Gear =====================")
+        for i, (row, col) in enumerate(rows_cols):
+            print(f"({row}, {col}) | {items[i]}")
+        print("=========================================================")
 
-        # Open Advanced Search window
-        pyautogui.moveTo(*layout_config["market-window"]["advanced-open-button"], Config.MOVE_TO_SPEED)
-        pyautogui.click()
+    if args.manually_advanced:
+        # We let our bot enter the detected item stats manually into the advanced search window
+        for i, (row, col) in enumerate(rows_cols):
+            item = items[i]
 
-        # Reset
-        pyautogui.moveTo(*layout_config["advanced-search-window"]["default-button"], Config.MOVE_TO_SPEED)
-        pyautogui.click()
+            # Open Auction House tab
+            pyautogui.moveTo(*layout["market-window"]["auction-house-button"], args.move_to_speed)
+            pyautogui.click()
 
-        # Set category
-        pick_from_dropdown(
-            layout_config["advanced-search-window"]["category-button"],
-            item.type,
-            ITEM_CATEGORIES,
-            layout_config["advanced-search-window"]["dropdown"]["category-num"]
-        )
+            # Open Advanced Search window
+            pyautogui.moveTo(*layout["market-window"]["advanced-open-button"], args.move_to_speed)
+            pyautogui.click()
 
-        # Set Class to 'All'
-        pyautogui.moveTo(*layout_config["advanced-search-window"]["class-button"], Config.MOVE_TO_SPEED)
-        pyautogui.click()
+            # Reset
+            pyautogui.moveTo(*layout["advanced-search-window"]["default-button"], args.move_to_speed)
+            pyautogui.click()
 
-        base_position = [
-            layout_config["advanced-search-window"]["class-button"][0],
-            layout_config["advanced-search-window"]["class-button"][1] + dropdown_offset]
-        pyautogui.moveTo(*base_position, Config.MOVE_TO_SPEED)
-        for _ in range(5):
-            pyautogui.scroll(3)
-            sleep(Config.SCROLL_SPEED)
-        pyautogui.click()
-
-        # Set item rank
-        pick_from_dropdown(
-            layout_config["advanced-search-window"]["item-rank-button"],
-            item.rank,
-            ITEM_RANKS,
-            layout_config["advanced-search-window"]["dropdown"]["rank-num"]
-        )
-
-        # Set item Tier
-        pick_from_dropdown(
-            layout_config["advanced-search-window"]["item-tier-button"],
-            item.tier,
-            ITEM_TIERS,
-            layout_config["advanced-search-window"]["dropdown"]["tier-num"]
-        )
-
-        # Set Engravings
-        for i, (name, value) in enumerate(item.engravings.items()):
-            if i == 0:
-                type_button = layout_config["advanced-search-window"]["other-advanced-options"]["first-type-button"]
-                detail_button = layout_config["advanced-search-window"]["other-advanced-options"]["first-detail-button"]
-            elif i == 1:
-                type_button = layout_config["advanced-search-window"]["other-advanced-options"]["second-type-button"]
-                detail_button = layout_config["advanced-search-window"]["other-advanced-options"][
-                    "second-detail-button"]
-            elif i == 2:  # This can happen, if we are looking at a ability stone
-                type_button = layout_config["advanced-search-window"]["other-advanced-options"]["third-type-button"]
-                detail_button = layout_config["advanced-search-window"]["other-advanced-options"]["third-detail-button"]
-
-            # Set to "Engraving Effects"
+            # Set category
             pick_from_dropdown(
-                type_button,
-                "Engraving Effect",
-                OTHER_ADVANCED_OPTIONS,
-                layout_config["advanced-search-window"]["dropdown"]["type-num"]
+                layout["advanced-search-window"]["category-button"],
+                item.type,
+                ITEM_CATEGORIES,
+                layout["advanced-search-window"]["dropdown"]["category-num"]
             )
 
-            # Pick engraving
+            # Set Class to 'All'
+            pyautogui.moveTo(*layout["advanced-search-window"]["class-button"], args.move_to_speed)
+            pyautogui.click()
+
+            base_position = [
+                layout["advanced-search-window"]["class-button"][0],
+                layout["advanced-search-window"]["class-button"][1] + dropdown_offset]
+            pyautogui.moveTo(*base_position, args.move_to_speed)
+            for _ in range(10):
+                pyautogui.scroll(1)
+                sleep(args.scroll_speed)
+            pyautogui.click()
+
+            # Set item rank
             pick_from_dropdown(
-                detail_button,
-                name,
-                ITEM_ENGRAVINGS,
-                layout_config["advanced-search-window"]["dropdown"]["detail-num"]
+                layout["advanced-search-window"]["item-rank-button"],
+                item.rank,
+                ITEM_RANKS,
+                layout["advanced-search-window"]["dropdown"]["rank-num"]
             )
 
-        if item.type != "Stone":
-            # Set bonus effects
-            for i, (name, value) in enumerate(item.bonus_effects.items()):
+            # Set item tier
+            pick_from_dropdown(
+                layout["advanced-search-window"]["item-tier-button"],
+                item.tier,
+                ITEM_TIERS,
+                layout["advanced-search-window"]["dropdown"]["tier-num"]
+            )
+
+            # Set Engravings
+            for i, (name, value) in enumerate(item.engravings.items()):
+                # TODO: There's a bug with the indexing. Items with e.g. 1 bonus effect and 3 engravings are not entered correctly.
                 if i == 0:
-                    type_button = layout_config["advanced-search-window"]["other-advanced-options"]["third-type-button"]
-                    detail_button = layout_config["advanced-search-window"]["other-advanced-options"][
-                        "third-detail-button"]
+                    type_button = layout["advanced-search-window"]["other-advanced-options"]["first-type-button"]
+                    detail_button = layout["advanced-search-window"]["other-advanced-options"]["first-detail-button"]
                 elif i == 1:
-                    type_button = layout_config["advanced-search-window"]["other-advanced-options"][
-                        "fourth-type-button"]
-                    detail_button = layout_config["advanced-search-window"]["other-advanced-options"][
-                        "fourth-detail-button"]
+                    type_button = layout["advanced-search-window"]["other-advanced-options"]["second-type-button"]
+                    detail_button = layout["advanced-search-window"]["other-advanced-options"][
+                        "second-detail-button"]
+                elif i == 2:  # This can happen, if we are looking at a ability stone
+                    type_button = layout["advanced-search-window"]["other-advanced-options"]["third-type-button"]
+                    detail_button = layout["advanced-search-window"]["other-advanced-options"]["third-detail-button"]
 
                 # Set to "Engraving Effects"
                 pick_from_dropdown(
                     type_button,
-                    "Combat Stats",
+                    "Engraving Effect",
                     OTHER_ADVANCED_OPTIONS,
-                    layout_config["advanced-search-window"]["dropdown"]["type-num"]
+                    layout["advanced-search-window"]["dropdown"]["type-num"]
                 )
 
                 # Pick engraving
                 pick_from_dropdown(
                     detail_button,
                     name,
-                    ITEM_COMBAT_STATS,
-                    layout_config["advanced-search-window"]["dropdown"]["detail-num"]
+                    ITEM_ENGRAVINGS,
+                    layout["advanced-search-window"]["dropdown"]["detail-num"]
                 )
 
-        pyautogui.moveTo(*layout_config["advanced-search-window"]["search-button"], Config.MOVE_TO_SPEED)
-        pyautogui.click()
+            if item.type != "Stone":
+                # Set bonus effects
+                for i, (name, value) in enumerate(item.bonus_effects.items()):
+                    if i == 0:
+                        type_button = layout["advanced-search-window"]["other-advanced-options"]["third-type-button"]
+                        detail_button = layout["advanced-search-window"]["other-advanced-options"][
+                            "third-detail-button"]
+                    elif i == 1:
+                        type_button = layout["advanced-search-window"]["other-advanced-options"][
+                            "fourth-type-button"]
+                        detail_button = layout["advanced-search-window"]["other-advanced-options"][
+                            "fourth-detail-button"]
 
-        pyautogui.alert("Press [OK] to continue...")
+                    # Set to "Engraving Effects"
+                    pick_from_dropdown(
+                        type_button,
+                        "Combat Stats",
+                        OTHER_ADVANCED_OPTIONS,
+                        layout["advanced-search-window"]["dropdown"]["type-num"]
+                    )
+
+                    # Pick engraving
+                    pick_from_dropdown(
+                        detail_button,
+                        name,
+                        ITEM_COMBAT_STATS,
+                        layout["advanced-search-window"]["dropdown"]["detail-num"]
+                    )
+
+            pyautogui.moveTo(*layout["advanced-search-window"]["search-button"], args.move_to_speed)
+            pyautogui.click()
+
+            pyautogui.alert("Press [OK] to continue...")
+    else:
+        # Hover over item
+        for i, (row, col) in enumerate(rows_cols):
+            # Open Auction House tab
+            pyautogui.moveTo(*layout["market-window"]["auction-house-button"], args.move_to_speed)
+            pyautogui.click()
+
+            # Hover over item
+            cell_pos = [
+                base_cell_pos[0] + col * layout['inventory-window']['cell-size'],
+                base_cell_pos[1] + row * layout['inventory-window']['cell-size']
+            ]
+            pyautogui.moveTo(*cell_pos, args.move_to_speed)
+
+            # CTRL+RMB -> "Check Market Value" option
+            pyautogui.keyDown('ctrl')
+            pyautogui.rightClick()
+            pyautogui.keyUp('ctrl')
+            market_value_button = [
+                cell_pos[0] + 188 - 138,
+                cell_pos[1] + 215 - 111  # TODO: to layout-info.yaml
+            ]
+            sleep(0.2)
+            pyautogui.moveTo(*market_value_button, args.move_to_speed)
+            pyautogui.click()
+            sleep(0.2)
+
+            # Click Advanced Search
+            pyautogui.moveTo(*layout['market-window']['advanced-open-button'], args.move_to_speed)
+            pyautogui.click()
+            sleep(0.2)
+
+            # Remove item name
+            # TODO: to layout-info.yaml
+            pyautogui.moveTo(*[2022, 365], args.move_to_speed)
+            pyautogui.click()
+
+            # Click search
+            pyautogui.moveTo(*layout["advanced-search-window"]["search-button"], args.move_to_speed)
+            pyautogui.click()
+            sleep(0.2)
+
+            # Click on Search tab
+            # TODO: to layout-info.yaml
+            pyautogui.moveTo(*[923, 268], args.move_to_speed)
+            pyautogui.click()
+
+            # TODO: input mask -> automatic auction, dismantle or keep
+
+            pyautogui.alert("Press [OK] to continue...")

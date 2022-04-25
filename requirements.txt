@@ -2,4 +2,4 @@ pyautogui
 pytesseract
 opencv-python
 numpy
-yaml
+pyyaml

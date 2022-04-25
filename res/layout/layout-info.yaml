@@ -1,0 +1,43 @@
+3440x1440: # The resolution under which the layout definition is valid
+  inventory-window: # The 10x10 item grid
+    cell-size: 70 # Side-length of one cell
+    upper-left-cell: [64, 138] # Center coordinate of left-upper cell
+  item-window: # The window that pops up after you hover over an item
+    offset-from-cell-center: 39 # How many pixels to the right does the item window start
+    width: 409 # Item window width
+  market-window: # The window that opens when you open the Market
+    market-button: [911, 213] # Some button coordinates
+    auction-house-button: [1093, 213]
+    advanced-open-button: [2555, 325]
+    search-button: [2457, 317]
+    buy-now-sort-button: [2507, 373]
+  advanced-search-window: # The Advanced Item Search window
+    close-button: [2373, 289]
+    category-button: [1336, 362]
+    class-button: [1341, 439]
+    item-rank-button: [1344, 512]
+    quality-button: [1295, 586]
+    item-tier-button: [1892, 512]
+    item-lvl-low: [1774, 436]
+    item-lvl-high: [1940, 437]
+    search-button: [ 1784, 1160 ]
+    default-button: [ 1642, 1164 ]
+    other-advanced-options: # The engraving/bonus effect dropdown menu section
+      first-type-button: [1235, 949] # type refers to the left and detail to the right dropdowns
+      first-detail-button: [1578, 952]
+      second-type-button: [1235, 1000]
+      second-detail-button: [1578, 1000]
+      third-type-button: [1235, 1053]
+      third-detail-button: [1578, 1053]
+      fourth-type-button: [1235, 1107]
+      fourth-detail-button: [1578, 1107]
+    dropdown:
+      offset: 45 # How many pixels to go down from dropdown cell center to first item in dropdown list
+      step: 37 # Distance between two successive dropdown cells
+      category-num: 5 # Number of visible dropdown cells inside the scroll window
+      class-num: 5
+      tier-num: 4
+      rank-num: 5
+      quality-num: 5
+      type-num: 3
+      detail-num: 5
