@@ -47,8 +47,9 @@ def adjust_to_width_height_difference(d, wd, hd):
         if isinstance(v, dict):
             adjust_to_width_height_difference(v, wd, hd)
         else:
-            if isinstance(v, list) and k != 'upper-left-cell':
-                d[k][0] = v[0] - round(wd / 2.0)
+            if isinstance(v, list):
+                if k != 'upper-left-cell':
+                    d[k][0] = v[0] - round(wd / 2.0)
                 d[k][1] = v[1] - round(hd / 2.0)
 
 
@@ -100,8 +101,11 @@ def read_adjusted_layout(trg_res, layout_config_path):
         height_difference = 0
         scale_factor = trg_height / src_height
     width_difference = round(src_width * scale_factor - trg_width)
+    print(scale_factor, width_difference, height_difference)
 
     adjust_to_width_height_difference(layout, width_difference, height_difference)
     adjust_to_scale_difference(layout, scale_factor)
+
+    print(yaml.dump(layout, allow_unicode=True, default_flow_style=False))
 
     return layout
