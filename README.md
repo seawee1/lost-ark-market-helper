@@ -1,6 +1,4 @@
 # Lost Ark Gear-to-Money Auction Helper
-A little quality of life tool that mashes some buttons for you to comfortably look up the gold value of those juicy gear pieces occupying half of your inventory space. 
-
 Because cycling through *Item menu -> Check Market Value -> Clear name field -> Search button -> Search tab* is boring as hell, we outsource this task to our little *computing slav...* eeeeh... *friend!*
 
 
