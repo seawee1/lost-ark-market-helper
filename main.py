@@ -195,6 +195,12 @@ if __name__ == "__main__":
     parser.add_argument('--scan-inventory', action='store_true')
     args = parser.parse_args()
 
+    # See assertion message
+    if args.manually_advanced:
+        assert args.scan_inventory is True, "In order to manually enter item stats into the advanced item search " \
+                                            "form, the item gear stats have to be extracted via OCR. Passing the " \
+                                            "'--scan-inventory' flag will activate this behavior. "
+
     # Set Tesseract path
     pytesseract.pytesseract.tesseract_cmd = args.tesseract_bin_path
 
