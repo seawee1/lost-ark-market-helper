@@ -1,0 +1,14 @@
+All
+Gear
+Weapon
+Helm
+Chestpiece
+Pants
+Gloves
+Shoulders
+Stone
+Accessory
+Necklace
+Earrings
+Ring
+Gem

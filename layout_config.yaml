@@ -1,0 +1,43 @@
+3440x1440:
+  inventory-window:
+    cell-size: 70
+    cell00-center: [64, 138]
+  item-window:
+    offset-from-cell-center: 39
+    width: 409
+  market-window:
+    market-button: [911, 213]
+    auction-house-button: [1093, 213]
+    advanced-open-button: [2555, 325]
+    search-button: [2457, 317]
+    buy-now-sort-button: [2507, 373]
+  advanced-search-window:
+    close-button: [2373, 289]
+    category-button: [1336, 362]
+    class-button: [1341, 439]
+    item-rank-button: [1344, 512]
+    quality-button: [1295, 586]
+    item-tier-button: [1892, 512]
+    item-lvl-low: [1774, 436]
+    item-lvl-high: [1940, 437]
+    other-advanced-options:
+      first-type-button: [1235, 949]
+      first-detail-button: [1578, 952]
+      second-type-button: [1235, 1000]
+      second-detail-button: [1578, 1000]
+      third-type-button: [1235, 1053]
+      third-detail-button: [1578, 1053]
+      fourth-type-button: [1235, 1107]
+      fourth-detail-button: [1578, 1107]
+    search-button: [1784, 1160]
+    default-button: [1642, 1164]
+    dropdown:
+      offset: 45
+      step: 37
+      category-num: 5
+      class-num: 5
+      tier-num: 4
+      rank-num: 5
+      quality-num: 5
+      type-num: 3
+      detail-num: 5
