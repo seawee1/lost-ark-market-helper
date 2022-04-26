@@ -1,6 +1,10 @@
 # Lost Ark Gear-to-Money Auction Helper
 Because cycling through *Item menu -> Check Market Value -> Clear name field -> Search button -> Search tab* is boring as hell, we outsource this task to our little *computing slav...* eeeeh... *friend!*
 
+## Demo
+https://user-images.githubusercontent.com/45483347/165363869-6918e9ca-31d1-47ec-b56a-05cfd0262d00.mp4
+
+
 
 ## Setup
 Setup the Python environment via ```pip install -r requirements.txt```.
